@@ -1,0 +1,29 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+fastapi = "*"
+uvicorn = "*"
+pydantic = "*"
+
+[dev-packages]
+mypy = "*"
+pytest = "*"
+black = "*"
+isort = "*"
+pytest-cov = "*"
+pylint = "*"
+pre-commit = "*"
+
+[requires]
+python_version = "3.11"
+
+[scripts]
+tidy = "scripts/tidy.sh"
+lint = "scripts/lint.sh"
+test = "scripts/test.sh"
+
+[pipenv]
+allow_prereleases = true
