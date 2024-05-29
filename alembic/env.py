@@ -1,10 +1,8 @@
 import os
 import sys
-import asyncio
 
 from dotenv import load_dotenv
 
-from sqlalchemy.ext.asyncio import AsyncEngine, async_engine_from_config
 from sqlalchemy.engine import Connection
 from sqlalchemy import pool, engine_from_config
 
