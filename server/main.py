@@ -1,22 +1,47 @@
-from fastapi import FastAPI, APIRouter
+""" Description: Main entry point for the FastAPI application. """
 
-app = FastAPI(title="Server API")
+import uvicorn
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-api_router: APIRouter = APIRouter()
+from api import api_router
+from database import engine
+from models import Base
+from config import configure_logging, DEBUG, ALLOWED_HOSTS
+
+configure_logging()
+
+app = FastAPI(
+    title="Server API",
+    description="An API for FastAPI with PostgreSQL and Redis.",
+    version="0.1.0",
+    debug=DEBUG,
+    host="0.0.0.0",
+    port=8080,
+    url_prefix="/api",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_HOSTS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
-@api_router.get("/", status_code=200)
-def root() -> dict[str, str]:
-    """
-    Root Get
-    """
-    return {"msg": "Hello, World!"}
+@app.on_event("startup")
+async def startup():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+
+@app.on_event("shutdown")
+async def shutdown():
+    await engine.dispose()
 
 
 app.include_router(api_router)
 
 if __name__ == "__main__":
-    # Use this for debugging purposes only
-    import uvicorn
-
-    uvicorn.run(app, host="0.0.0.0", port=8001, log_level="debug")
+    uvicorn.run("main:app", host="0.0.0.0", port=8000)

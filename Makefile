@@ -1,112 +1,92 @@
+SHELL = /bin/bash
+.ONESHELL:
+.SHELLFLAGS := -eu -o pipefail -c
+.DELETE_ON_ERROR:
 .DEFAULT_GOAL := help
 
+include .env
+export $(shell sed 's/=.*//' .env)
 export PYTHONPATH
 export PIPENV_VENV_IN_PROJECT=1
+
+APP_NAME = server:0.1.0
+APP_DIR = server
+TEST_SRC = $(APP_DIR)/tests
 
 PYTHON := python3
 PIP := $(PYTHON) -m pip
 PIPENV := $(PYTHON) -m pipenv
-PYLINT := $(PIPENV) run pylint
-BLACK := $(PIPENV) run black
-MYPY := $(PIPENV) run mypy
-ISORT := $(PIPENV) run isort
+DOCKER_COMPOSE_RUN := docker compose exec $(APP_DIR)
 
-app_name = fast-api-app:0.0.1
-app_root = server
-tests_src = $(app_root)/tests
-sudo docker_run = docker run --rm --mount type=bind,source="$(shell pwd)/",target=/root/ $(app_name)
+POSTGRES_COMMAND := /Applications/Postgres.app/Contents/Versions/latest/bin
 
-
-.PHONY: help
 help: ## Show available targets
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
-
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN \
+	{FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 ### Local commands ###
-
-.PHONY: install
-install:
-	$(PYTHON) -m pip install pip==22.3.1
-	$(PIP) install --upgrade pip
-	$(PIP) install --user pipenv
-	$(PIPENV) --python 3.11
-
-.PHONY: venv
 venv:
 	$(PIP) install -U pipenv
 	$(PIPENV) shell
 
-.PHONY: install-packages
 install-packages:
-	pipenv install --dev
+	$(PIPENV) install --dev
 
-.PHONY: lint-local
-lint-local:
-	$(PYLINT) -E $(APP_DIR) || pylint-exit $$?
+create-local-database-linux:
+	sudo -u postgres psql -c 'create database $(DATABASE_NAME);'
+	sudo -u postgres psql -c 'grant all privileges on database $(DATABASE_NAME) \
+	to $(DATABASE_USERNAME);'
 
-.PHONY: format-local
-format-local:
-	$(BLACK) $(APP_DIR)
-	$(ISORT) $(APP_DIR)
+create-local-database-mac:
+	sudo mkdir -p /etc/paths.d && \
+  	echo $(POSTGRES_COMMAND) \
+  	| sudo tee /etc/paths.d/postgresapp
 
-.PHONY: check-typing
-check-typing:
-	$(MYPY) $(APP_DIR)
+	sudo $(POSTGRES_COMMAND)/psql -U postgres -c 'create database $(DATABASE_NAME);'
+	sudo $(POSTGRES_COMMAND)/psql -U postgres -c 'grant all privileges \
+	 on database $(DATABASE_NAME) to $(DATABASE_USERNAME);'
 
-.PHONY: lint-and-format
-lint-and-format: ## Lint, format and static-check
-	$(PYLINT) -E $(APP_DIR) || pylint-exit $$?
-	$(MYPY) $(APP_DIR)
-	$(BLACK) $(APP_DIR)
-	$(ISORT) $(APP_DIR)
+drop-local-database-linux:
+	sudo psql -U postgres -c 'drop database $(DATABASE_NAME);'
 
-.PHONY: run
-run: ## Run FastAPI app
-	$(PYTHON) $(APP_DIR)/main.py
+drop-local-database-mac:
+	sudo $(POSTGRES_COMMAND)/psql -U postgres -c 'drop database $(DATABASE_NAME);'
+
+run-local:
+	$(PYTHON) -m uvicorn --chdir $(APP_DIR) main:app --reload
+
+makemigrations:
+	$(PYTHON) -m alembic $(APP_DIR) revision --autogenerate
+
+migrate:
+	$(PYTHON) -m alembic $(APP_DIR) upgrade head
+
+test:
+	$(PYTHON) -m pytest $(TEST_SRC)
 
 ### Docker commands ###
+up:
+	docker compose up -d --build
 
-.PHONY: build-docker-image
-build-docker-image: ## Build the docker image and install python dependencies
-	sudo docker build --no-cache -t $(app_name) .
-	$(docker_run) pipenv install --dev
-	$(docker_run) pre-commit install
+down:
+	docker compose down -v
 
-.PHONY: docker-compose-up
-docker-compose-up: ## Run the docker-compose up
-	docker-compose --env-file .env up -d
+logs:
+	docker compose logs -f
 
-.PHONY: docker-compose-down
-docker-compose-up: ## Run the docker-compose down
-	docker-compose down -v
+docker-makemigrations:
+	$(DOCKER_COMPOSE_RUN) python3 -m alembic $(APP_DIR) revision --autogenerate -m
 
-.PHONY: docker-restart
-docker-compose-up: ## Run the docker-compose restart
-	docker-compose down -v
-	docker-compose --env-file .env up -d
+docker-migrate:
+	$(DOCKER_COMPOSE_RUN) python3 -m alembic $(APP_DIR) upgrade head
 
-.PHONY: docker-compose-up-prod
-docker-compose-up: ## Run the docker-compose up on production
-	docker-compose --env-file .env up -f docker-compose.prod.yml up -d --build
+copy-env:
+	exec cp .env.example .env
 
-.PHONY: create-traefik-user
-format:
-	echo $(htpasswd -nb testuser password) | sed -e s/\\$/\\$\\$/g
-
-.PHONY: format
-format: ## Format code
-	$(docker_run) pipenv run format
-
-.PHONY: lint
-lint: ## Lint the code
-	$(docker_run) pipenv run lint
-
-.PHONY: test
-test: ## Run tests
-	$(docker_run) pipenv run test
+docker-test:
+	$(DOCKER_COMPOSE_RUN) pytest $(TEST_SRC)
 
 # Consider using test-dev or test-deploy instead
-.PHONY: testcov
 testcov:
 	pytest $(tests_src)
 	@echo "building coverage html"
@@ -114,7 +94,6 @@ testcov:
 	@echo "opening coverage html in browser"
 	@open htmlcov/index.html
 
-.PHONY: clean
 clean:
 	rm -rf `find . -name __pycache__`
 	rm -f `find . -type f -name '*.py[co]' `
@@ -130,3 +109,8 @@ clean:
 	rm -f .coverage
 	rm -f .coverage.*
 	rm -rf build
+
+.PHONY: help venv install-packages create-local-database-linux
+	create-local-database-mac drop-local-database run-local migrate test up down
+	test-docker copy-env push-image-aws prod-migrate prod-download-ml-models
+	prod-up prod-down logs testcov clean
