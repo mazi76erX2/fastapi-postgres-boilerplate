@@ -1,6 +1,7 @@
 """Module for defining the database models."""
 
 from sqlalchemy import Column, DateTime, func
+
 # from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, func
 # from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import DeclarativeMeta, declarative_base
