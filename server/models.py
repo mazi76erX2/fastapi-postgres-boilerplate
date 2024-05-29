@@ -15,6 +15,7 @@ class TimestampMixin:
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
+
 # Example model definitions
 # class Item(Base, TimestampMixin):
 #     """Model for an item in the inventory."""
