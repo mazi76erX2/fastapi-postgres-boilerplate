@@ -1,8 +1,11 @@
 """ Description: Main entry point for the FastAPI application. """
+from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+from debug_toolbar.middleware import DebugToolbarMiddleware
 
 from api import api_router
 from database import engine
@@ -10,6 +13,15 @@ from models import Base
 from config import configure_logging, DEBUG, ALLOWED_HOSTS
 
 configure_logging()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup event
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+    # Shutdown event
+    await engine.dispose()
 
 app = FastAPI(
     title="Server API",
@@ -19,6 +31,7 @@ app = FastAPI(
     host="0.0.0.0",
     port=8080,
     url_prefix="/api",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -29,17 +42,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-@app.on_event("startup")
-async def startup():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
-
-@app.on_event("shutdown")
-async def shutdown():
-    await engine.dispose()
-
+if DEBUG:
+    app.add_middleware(
+        DebugToolbarMiddleware,
+        panels=["debug_toolbar.panels.sqlalchemy.SQLAlchemyPanel"],
+    )
 
 app.include_router(api_router)
 
