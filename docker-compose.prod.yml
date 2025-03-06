@@ -3,12 +3,13 @@ services:
     restart: always
     build:
       context: .
-      dockerfile: docker/server/Dockerfile
+      dockerfile: docker/Dockerfile.prod
     command: bash -c "alembic upgrade head &&
-      python -m gunicorn main:app
-      --chdir /server
-      --bind 0.0.0.0:8000
-      -k uvicorn.workers.UvicornWorker
+      python -m uvicorn main:app
+      --host 0.0.0.0
+      --port 8000
+      --app-dir server
+      --reload"
     ports:
       - 8000:8000
     expose:
@@ -52,19 +53,6 @@ services:
       - 6379
     networks:
       - backend
-  frontend:
-    build:
-      context: .
-      dockerfile: docker/frontend/Dockerfile
-    restart: always
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./frontend:/app
-    depends_on:
-      - backend
-    environment:
-      - NEXT_PUBLIC_BACKEND_URL=http://backend:8000
   nginx:
     build: ./docker/nginx
     restart: unless-stopped

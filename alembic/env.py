@@ -8,7 +8,7 @@ from sqlalchemy import pool, engine_from_config
 
 from alembic import context
 
-import backend.models as models  # noqa
+import server.models as models  # noqa
 from logging.config import fileConfig
 
 

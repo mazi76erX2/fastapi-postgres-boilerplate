@@ -4,35 +4,34 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-fastapi = "0.111.0"
-SQLAlchemy = "2.0.30"
-uvicorn = "0.29.0"
-pydantic = "2.7.1"
+fastapi = "0.115.11"
+SQLAlchemy = "2.0.38"
+uvicorn = "0.34.0"
+pydantic = "2.10.6"
 python-dotenv = "1.0.1"
-alembic = "1.13.1"
-redis = "5.0.4"
-asyncpg = "0.29.0"
-faker = "*"
-psycopg2-binary = "2.9.9"
+alembic = "1.15.1"
+redis = "5.2.1"
+asyncpg = "0.30.0"
+psycopg2-binary = "2.9.10"
+fastapi-debug-toolbar = "0.6.3"
 
 [dev-packages]
-mypy = "1.10.0"
-isort = "5.13.2"
-pylint = "3.1.1"
-black = "24.4.2"
-blacken-docs="1.16.0"
-pytest = "8.2.0"
+mypy = "1.15.0"
+isort = "6.0.1"
+pylint = "3.3.4"
+black = "25.1.0"
+blacken-docs="1.19.0"
+pytest = "8.3.5"
 sqlalchemy-stubs = "*"
 pytest-cov = "*"
 pre-commit = "*"
 types-redis = "*"
-fastapi-debug-toolbar = "0.6.3"
 
 [requires]
-python_version = "3.12"
+python_version = "3.13"
 
 [scripts]
-tidy = "scripts/tidy.sh"
+format = "scripts/format.sh"
 lint = "scripts/lint.sh"
 test = "scripts/test.sh"
 

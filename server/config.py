@@ -1,4 +1,4 @@
-""" Application configuration """
+"""Application configuration"""
 
 import os
 import logging

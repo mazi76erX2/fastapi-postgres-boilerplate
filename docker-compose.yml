@@ -3,18 +3,22 @@ services:
     restart: always
     build:
       context: .
-      dockerfile: docker/backend/Dockerfile
+      dockerfile: docker/Dockerfile
     command: bash -c "alembic upgrade head &&
-      uvicorn main:app
+      python -m uvicorn main:app
       --host 0.0.0.0
-      --app-dir backend
-      --port 8000 --reload"
+      --port 8000
+      --app-dir server
+      --reload"
     ports:
       - "8000:8000"
+    expose:
+      - 8000
     volumes:
       - ./:/app:rw
     depends_on:
       - db
+      - redis
     networks:
       - backend
     env_file:
@@ -49,19 +53,6 @@ services:
       - 6379
     networks:
       - backend
-  frontend:
-    build:
-      context: .
-      dockerfile: docker/frontend/Dockerfile
-    restart: always
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./frontend:/app
-    depends_on:
-      - backend
-    environment:
-      - NEXT_PUBLIC_BACKEND_URL=http://backend:8000
 
 volumes:
   db: {}
