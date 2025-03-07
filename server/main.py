@@ -1,18 +1,18 @@
-""" Description: Main entry point for the FastAPI application. """
+"""Description: Main entry point for the FastAPI application."""
+
 from contextlib import asynccontextmanager
 
 import uvicorn
+from api import api_router
+from config import ALLOWED_HOSTS, DEBUG, configure_logging
+from database import engine
+from debug_toolbar.middleware import DebugToolbarMiddleware
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
-from debug_toolbar.middleware import DebugToolbarMiddleware
-
-from api import api_router
-from database import engine
 from models import Base
-from config import configure_logging, DEBUG, ALLOWED_HOSTS
 
 configure_logging()
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -22,6 +22,7 @@ async def lifespan(app: FastAPI):
     yield
     # Shutdown event
     await engine.dispose()
+
 
 app = FastAPI(
     title="Server API",

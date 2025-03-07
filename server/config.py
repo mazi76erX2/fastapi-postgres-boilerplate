@@ -1,12 +1,10 @@
 """Application configuration"""
 
-import os
 import logging
+import os
 
 from dotenv import load_dotenv
-
 from fastapi.logger import logger as fastapi_logger
-
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 load_dotenv(os.path.join(BASE_DIR, ".env"))
