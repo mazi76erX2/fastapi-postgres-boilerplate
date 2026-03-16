@@ -4,12 +4,8 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.prod
-    command: bash -c "alembic upgrade head &&
-      python -m uvicorn main:app
-      --host 0.0.0.0
-      --port 8000
-      --app-dir server
-      --reload"
+    environment:
+      - FASTAPI_ENV=prod
     ports:
       - 8000:8000
     expose:

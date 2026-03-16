@@ -5,17 +5,14 @@ SHELL = /bin/bash
 .DEFAULT_GOAL := help
 
 include .env
-export $(shell sed 's/=.*//' .env)
+export $(shell sed 's/=.*//' .env
 export PYTHONPATH
-export PIPENV_VENV_IN_PROJECT=1
 
 APP_NAME = server:0.1.0
 APP_DIR = server
 TEST_SRC = $(APP_DIR)/tests
 
-PYTHON := python3
-PIP := $(PYTHON) -m pip
-PIPENV := $(PYTHON) -m pipenv
+UV := uv
 DOCKER_COMPOSE_RUN := docker compose exec $(APP_DIR)
 
 POSTGRES_COMMAND := /Applications/Postgres.app/Contents/Versions/latest/bin
@@ -26,11 +23,10 @@ help: ## Show available targets
 
 ### Local commands ###
 venv:
-	$(PIP) install -U pipenv
-	$(PIPENV) shell
+	$(UV) venv
 
 install-packages:
-	$(PIPENV) install --dev
+	$(UV) sync --all-extras
 
 create-local-database-linux:
 	sudo -u postgres psql -c 'create database $(DATABASE_NAME);'
@@ -53,16 +49,25 @@ drop-local-database-mac:
 	sudo $(POSTGRES_COMMAND)/psql -U postgres -c 'drop database $(DATABASE_NAME);'
 
 run-local:
-	$(PYTHON) -m uvicorn --chdir $(APP_DIR) main:app --reload
+	$(UV) run uvicorn --app-dir $(APP_DIR) main:app --reload
 
 makemigrations:
-	$(PYTHON) -m alembic $(APP_DIR) revision --autogenerate
+	$(UV) run alembic revision --autogenerate -m "update"
 
 migrate:
-	$(PYTHON) -m alembic $(APP_DIR) upgrade head
+	$(UV) run alembic upgrade head
 
 test:
-	$(PYTHON) -m pytest $(TEST_SRC)
+	$(UV) run pytest $(TEST_SRC)
+
+lint:
+	$(UV) run ruff format --check .
+	$(UV) run ruff check .
+	$(UV) run mypy server
+
+format:
+	$(UV) run ruff format .
+	$(UV) run ruff check . --fix
 
 ### Docker commands ###
 up:
@@ -75,22 +80,22 @@ logs:
 	docker compose logs -f
 
 docker-makemigrations:
-	$(DOCKER_COMPOSE_RUN) python3 -m alembic $(APP_DIR) revision --autogenerate -m
+	$(DOCKER_COMPOSE_RUN) uv run alembic revision --autogenerate -m "update"
 
 docker-migrate:
-	$(DOCKER_COMPOSE_RUN) python3 -m alembic $(APP_DIR) upgrade head
+	$(DOCKER_COMPOSE_RUN) uv run alembic upgrade head
 
 copy-env:
 	exec cp .env.example .env
 
 docker-test:
-	$(DOCKER_COMPOSE_RUN) pytest $(TEST_SRC)
+	$(DOCKER_COMPOSE_RUN) uv run pytest $(TEST_SRC)
 
 # Consider using test-dev or test-deploy instead
 testcov:
-	pytest $(tests_src)
+	$(UV) run pytest $(TEST_SRC) --cov=$(APP_DIR)
 	@echo "building coverage html"
-	@coverage html
+	@$(UV) run coverage html
 	@echo "opening coverage html in browser"
 	@open htmlcov/index.html
 

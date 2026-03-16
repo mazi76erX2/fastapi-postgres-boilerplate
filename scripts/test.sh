@@ -1,3 +1,4 @@
 #!/bin/bash
+set -e
 
-pytest --cov=server
+uv run pytest --cov=server

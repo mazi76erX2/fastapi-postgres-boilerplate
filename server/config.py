@@ -1,44 +1,61 @@
-"""Application configuration"""
+"""Application configuration."""
 
 import logging
-import os
+from functools import lru_cache
 
-from dotenv import load_dotenv
 from fastapi.logger import logger as fastapi_logger
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-load_dotenv(os.path.join(BASE_DIR, ".env"))
-
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql+asyncpg://postgres:postgres@db/server",
-)
-
-LOGGING_FORMAT = "%(levelname)s: %(name)s: %(message)s"
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-def configure_logging() -> None:
-    """Configures logging for the application"""
-    logging.basicConfig(level=logging.INFO, format=LOGGING_FORMAT)
-    fastapi_logger.setLevel(logging.INFO)
+class Settings(BaseSettings):
+    """Typed application settings loaded from environment variables."""
+
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    debug: bool = False
+    database_name: str = "fastapi-app"
+    database_username: str = "postgres"
+    database_password: str = "postgres"
+    database_host: str = "db"
+    database_port: int = 5432
+    cache_host: str = "redis"
+    cache_port: int = 6379
+    cache_db: int = 0
+    cors_allow_origins: list[str] = Field(default_factory=lambda: ["*"])
+    log_level: str = "INFO"
+
+    @property
+    def database_url(self) -> str:
+        return (
+            "postgresql+asyncpg://"
+            f"{self.database_username}:{self.database_password}@"
+            f"{self.database_host}:{self.database_port}/{self.database_name}"
+        )
+
+    @property
+    def database_url_sync(self) -> str:
+        return (
+            "postgresql+psycopg2://"
+            f"{self.database_username}:{self.database_password}@"
+            f"{self.database_host}:{self.database_port}/{self.database_name}"
+        )
+
+    @property
+    def redis_url(self) -> str:
+        return f"redis://{self.cache_host}:{self.cache_port}/{self.cache_db}"
 
 
-configure_logging()
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
 
 
-# SECURITY WARNING: don't run with debug turned on in production!
-def str2bool(arg: int | str) -> bool:
-    """
-    Converts string to Boolean for .env file
-    """
-    return str(arg).lower() in ("1", "true")
+def configure_logging(level: str) -> None:
+    """Configure app logging once."""
+
+    logging.basicConfig(level=level, format="%(levelname)s: %(name)s: %(message)s")
+    fastapi_logger.setLevel(level)
 
 
-DEBUG = str2bool(os.getenv("DEBUG", "false"))
-
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "*").split(",")
-
-REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379")
-
-# Examples of environment variables
-# NUM_ITEMS = int(os.getenv("NUM_ITEMS", 50))
+settings = get_settings()

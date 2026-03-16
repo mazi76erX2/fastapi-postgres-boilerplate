@@ -1,6 +1,5 @@
 #!/bin/bash
+set -e
 
-isort server/ --check-only
-black server/ --check
-blacken-docs README.md
-blacken-docs --all-files
+uv run ruff format .
+uv run ruff check . --fix

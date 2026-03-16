@@ -1,28 +1,24 @@
 #!/bin/sh
 set -e
 
-# Optionally wait for PostgreSQL to be ready
-# Ensure DATABASE_HOST is set in your environment (e.g. via .env or Docker Compose)
-if [ -n "$DATABASE_HOST" ]; then
-  echo "Waiting for PostgreSQL at $DATABASE_HOST..."
-  while ! nc -z "$DATABASE_HOST" 5432; do
-    sleep 0.1
-  done
-  echo "PostgreSQL is available."
-fi
+DATABASE_HOST=${DATABASE_HOST:-db}
+DATABASE_PORT=${DATABASE_PORT:-5432}
+APP_DIR=${APP_DIR:-server}
+FASTAPI_ENV=${FASTAPI_ENV:-prod}
 
-# Determine environment mode (default: production)
-ENVIRONMENT=${FASTAPI_ENV:-prod}
-echo "Starting container in $ENVIRONMENT mode..."
+echo "Waiting for PostgreSQL at ${DATABASE_HOST}:${DATABASE_PORT}..."
+while ! nc -z "$DATABASE_HOST" "$DATABASE_PORT"; do
+  sleep 0.1
+done
+echo "PostgreSQL is available."
 
-# Run the appropriate command based on the environment
-if [ "$ENVIRONMENT" = "dev" ]; then
-  echo "Running in development mode..."
-  # In development, use auto-reload
-  exec uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+echo "Running Alembic migrations..."
+alembic upgrade head
+
+echo "Starting API in ${FASTAPI_ENV} mode..."
+
+if [ "$FASTAPI_ENV" = "dev" ]; then
+  exec uvicorn main:app --host 0.0.0.0 --port 8000 --app-dir "$APP_DIR" --reload
 else
-  echo "Running in production mode..."
-  # In production, you might use a production server (e.g., uvicorn or gunicorn with uvicorn workers)
-  # For simplicity, we use uvicorn directly here.
-  exec uvicorn main:app --host 0.0.0.0 --port 8000
+  exec uvicorn main:app --host 0.0.0.0 --port 8000 --app-dir "$APP_DIR"
 fi

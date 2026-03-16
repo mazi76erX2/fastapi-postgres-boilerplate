@@ -1,4 +1,6 @@
 #!/bin/bash
+set -e
 
-mypy server
-pylint server
+uv run ruff format --check .
+uv run ruff check .
+uv run mypy server

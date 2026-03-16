@@ -3,10 +3,8 @@ Description: This file contains the RedisCache class which is used to
 interact with the Redis cache.
 """
 
-from typing import Optional
-
 import redis.asyncio as redis
-from config import REDIS_URL
+from config import settings
 
 
 class RedisCache:
@@ -14,18 +12,18 @@ class RedisCache:
 
     def __init__(self, url: str):
         self.url = url
-        self.redis: Optional[redis.Redis] = None
+        self.redis: redis.Redis | None = None
 
     async def connect(self) -> None:
         """Connect to Redis"""
-        self.redis = await redis.from_url(self.url, encoding="utf-8")
+        self.redis = redis.from_url(self.url, encoding="utf-8", decode_responses=True)
 
     async def close(self) -> None:
         """Close the Redis connection"""
         if self.redis:
             await self.redis.close()
 
-    async def get(self, key: str) -> Optional[str]:
+    async def get(self, key: str) -> str | None:
         """Get value from Redis cache"""
         if self.redis:
             return await self.redis.get(key)
@@ -42,4 +40,4 @@ class RedisCache:
             await self.redis.delete(key)
 
 
-redis_cache = RedisCache(REDIS_URL)
+redis_cache = RedisCache(settings.redis_url)
